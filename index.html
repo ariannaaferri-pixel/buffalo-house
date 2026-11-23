@@ -1,0 +1,956 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Design a Buffalo House — Part 2: Model It</title>
+<style>
+  :root {
+    --navy: #1e3a5f;
+    --slate: #334155;
+    --muted: #64748b;
+    --bg: #f8fafc;
+    --card: #ffffff;
+    --border: #cbd5e1;
+    --accent: #0284c7;
+    --green: #16a34a;
+    --amber: #d97706;
+    --red: #dc2626;
+    --purple: #7c3aed;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: var(--bg);
+    color: #0f172a;
+    line-height: 1.45;
+  }
+  header {
+    background: var(--navy);
+    color: #fff;
+    padding: 14px 22px;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    box-shadow: 0 2px 6px rgba(15, 23, 42, 0.15);
+  }
+  header h1 {
+    margin: 0;
+    font-size: 1.25rem;
+    font-weight: 700;
+    letter-spacing: 0.2px;
+  }
+  header .sub {
+    font-size: 0.85rem;
+    color: #cbd5e1;
+  }
+  .controls-bar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+  }
+  button {
+    border: none;
+    border-radius: 7px;
+    padding: 8px 14px;
+    font-size: 0.88rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: transform 0.08s ease, background 0.15s ease, opacity 0.15s ease;
+  }
+  button:active { transform: scale(0.98); }
+  .btn-play { background: #16a34a; color: #fff; }
+  .btn-play:hover { background: #15803d; }
+  .btn-step { background: #0284c7; color: #fff; }
+  .btn-step:hover { background: #0369a1; }
+  .btn-trial { background: #e2e8f0; color: #1e293b; }
+  .btn-trial:hover { background: #cbd5e1; }
+  .btn-trial.active { background: #f59e0b; color: #fff; }
+  .btn-reset { background: #475569; color: #fff; }
+  .btn-reset:hover { background: #334155; }
+
+  .container {
+    max-width: 1240px;
+    margin: 16px auto;
+    padding: 0 16px;
+    display: grid;
+    grid-template-columns: 355px 1fr;
+    gap: 16px;
+  }
+  @media (max-width: 960px) {
+    .container { grid-template-columns: 1fr; }
+  }
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05);
+  }
+  .goal-box {
+    background: #fffbeb;
+    border: 1px solid #f59e0b;
+    border-radius: 8px;
+    padding: 10px 12px;
+    font-size: 0.86rem;
+    margin-bottom: 12px;
+  }
+  .goal-box strong { color: #92400e; }
+
+  .step-card {
+    border: 1px solid #e2e8f0;
+    border-left: 4px solid #cbd5e1;
+    border-radius: 7px;
+    padding: 9px 11px;
+    margin-bottom: 8px;
+    font-size: 0.85rem;
+    background: #f8fafc;
+    transition: all 0.2s ease;
+  }
+  .step-card.active {
+    background: #eff6ff;
+    border-color: #93c5fd;
+    border-left-color: #0284c7;
+    box-shadow: 0 2px 6px rgba(2, 132, 199, 0.12);
+  }
+  .step-card .step-title {
+    font-weight: 700;
+    color: var(--navy);
+    margin-bottom: 3px;
+  }
+  .step-card p {
+    margin: 0;
+    color: #334155;
+  }
+
+  .status-banner {
+    background: #0f172a;
+    color: #f8fafc;
+    padding: 10px 14px;
+    border-radius: 8px;
+    font-size: 0.92rem;
+    font-weight: 600;
+    margin-bottom: 10px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .badge {
+    padding: 3px 9px;
+    border-radius: 999px;
+    font-size: 0.78rem;
+    font-weight: 700;
+    background: #334155;
+    color: #e2e8f0;
+  }
+  .canvas-wrap {
+    width: 100%;
+    overflow-x: auto;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    background: #fff;
+  }
+  svg {
+    display: block;
+    width: 100%;
+    height: auto;
+    max-height: 540px;
+  }
+  .table-section {
+    max-width: 1240px;
+    margin: 0 auto 24px auto;
+    padding: 0 16px;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.88rem;
+    margin-top: 8px;
+  }
+  th {
+    background: var(--navy);
+    color: #fff;
+    padding: 8px 6px;
+    text-align: center;
+    border: 1px solid #94a3b8;
+    font-weight: 600;
+  }
+  td {
+    padding: 9px 6px;
+    text-align: center;
+    border: 1px solid #cbd5e1;
+    font-weight: 600;
+  }
+  tr.row-active td { background: #fef9c3; }
+  .pill-y {
+    background: #dcfce7;
+    color: #166534;
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-weight: 700;
+  }
+  .pill-n {
+    background: #fee2e2;
+    color: #991b1b;
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-weight: 700;
+  }
+  .toggle-row {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-top: 10px;
+    font-size: 0.84rem;
+    color: #334155;
+    flex-wrap: wrap;
+  }
+  label.chk {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    font-weight: 600;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>Design a Buffalo House — Part 2: Model It</h1>
+    <div class="sub">Interactive Protractor &amp; Sun-Angle Walkthrough (1 ft &rarr; 3 ft &rarr; 2 ft)</div>
+  </div>
+  <div class="controls-bar">
+    <button class="btn-play" id="btnPlay">&#9654; Play Full Demo</button>
+    <button class="btn-step" id="btnNext">Next Step &rarr;</button>
+    <button class="btn-trial active" data-trial="0">Trial 1: 1 ft</button>
+    <button class="btn-trial" data-trial="1">Trial 2: 3 ft</button>
+    <button class="btn-trial" data-trial="2">Trial 3: 2 ft</button>
+    <button class="btn-reset" id="btnReset">Reset</button>
+  </div>
+</header>
+
+<div class="container">
+  <!-- LEFT: STUDENT DIRECTIONS -->
+  <div class="card">
+    <div class="goal-box">
+      <strong>Goal:</strong> Block <strong>all</strong> summer sun in June (71&deg;) so the window gets <strong>none</strong>, while letting <strong>all</strong> winter sun in December (24&deg;) hit the whole window (3 ft to 7 ft).<br>
+      <span style="color:#1e3a5f;font-weight:700;">Scale: 2 small squares = 1 ft</span>
+    </div>
+
+    <div class="step-card active" id="stepCard0">
+      <div class="step-title">1. Draw the Roof Overhang</div>
+      <p>Start at the black dot at the top of the wall (<strong>8 ft</strong>). Use a ruler to draw a straight horizontal line <strong>left</strong> toward South.</p>
+    </div>
+
+    <div class="step-card" id="stepCard1">
+      <div class="step-title">2. Place Protractor Upside-Down</div>
+      <p>Flip the protractor so the curved edge faces <strong>DOWN</strong> and the flat edge is on <strong>TOP</strong>. Put the center hole on the <strong>outer left tip</strong> of the overhang (NOT the wall) with <strong>0&deg;</strong> along the overhang to the right.</p>
+    </div>
+
+    <div class="step-card" id="stepCard2">
+      <div class="step-title">3. Mark June Sun (71&deg;)</div>
+      <p>Starting from the <strong>0&deg;</strong> right flat edge along the overhang, count <strong>71&deg; downward</strong> and make a small dot on the grid.</p>
+    </div>
+
+    <div class="step-card" id="stepCard3">
+      <div class="step-title">4. Mark December Sun (24&deg;)</div>
+      <p>Without moving the protractor, count <strong>24&deg; downward</strong> from the same <strong>0&deg;</strong> right flat edge and make a second dot.</p>
+    </div>
+
+    <div class="step-card" id="stepCard4">
+      <div class="step-title">5. Connect Dots &amp; Check Window</div>
+      <p>Use a ruler to draw straight rays from the overhang tip through each dot to the wall or ground. Below the line = <strong>IN SUN</strong>; above = <strong>IN SHADE</strong>.</p>
+    </div>
+
+    <div class="toggle-row">
+      <label class="chk"><input type="checkbox" id="chkGhosts" checked /> Keep previous trials visible</label>
+    </div>
+  </div>
+
+  <!-- RIGHT: INTERACTIVE DIAGRAM -->
+  <div class="card">
+    <div class="status-banner">
+      <span id="statusText">Trial 1 (1 ft Overhang): Ready to draw overhang</span>
+      <span class="badge" id="trialBadge">Trial 1 of 3 &bull; Pencil</span>
+    </div>
+
+    <div class="canvas-wrap">
+      <svg id="scene" viewBox="0 0 820 620" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <marker id="arrowSouth" markerWidth="8" markerHeight="8" refX="4" refY="4" orient="auto">
+            <path d="M8,1 L1,4 L8,7 Z" fill="#0f172a"/>
+          </marker>
+          <marker id="arrowNorth" markerWidth="8" markerHeight="8" refX="4" refY="4" orient="auto">
+            <path d="M1,1 L8,4 L1,7 Z" fill="#0f172a"/>
+          </marker>
+        </defs>
+
+        <!-- Background -->
+        <rect x="0" y="0" width="820" height="620" fill="#ffffff"/>
+
+        <!-- Grid Group (drawn by JS) -->
+        <g id="gridLayer"></g>
+
+        <!-- Sun icon top-left -->
+        <g transform="translate(115, 95)">
+          <circle cx="0" cy="0" r="24" fill="#fbbf24" stroke="#b45309" stroke-width="2.5"/>
+          <text x="34" y="-3" font-size="13" font-weight="700" fill="#1e293b">Noon Sun</text>
+          <text x="34" y="13" font-size="12" fill="#475569">(to the south)</text>
+        </g>
+
+        <!-- Ground -->
+        <rect x="65" y="510" width="715" height="28" fill="#86b065"/>
+        <g id="grassLayer"></g>
+
+        <!-- House Structure: Wall x=540, y=150 (8ft) to y=510 (0ft). Scale: 1 ft = 45 px (1 sq = 0.5 ft = 22.5 px) -->
+        <rect x="540" y="150" width="220" height="360" fill="#efece6" stroke="#0f172a" stroke-width="3.5"/>
+        <polygon points="540,150 650,55 760,150" fill="#737373" stroke="#0f172a" stroke-width="3.5"/>
+        <rect x="695" y="42" width="26" height="68" fill="#a3a3a3" stroke="#0f172a" stroke-width="3"/>
+        <line x1="695" y1="95" x2="721" y2="115" stroke="#0f172a" stroke-width="3"/>
+
+        <!-- Wall Shading Overlay -->
+        <g id="wallShadeLayer"></g>
+
+        <!-- Window (3 ft to 7 ft -> y = 375 down to y = 195) -->
+        <rect id="windowRect" x="534" y="195" width="12" height="180" fill="#e0f2fe" stroke="#0f172a" stroke-width="3"/>
+        <g id="windowSunOverlay"></g>
+
+        <text x="556" y="280" font-size="13" font-weight="700" fill="#0f172a">Window</text>
+        <text x="556" y="297" font-size="12" fill="#334155">(3 ft to 7 ft)</text>
+
+        <text x="650" y="405" text-anchor="middle" font-size="14" font-weight="600" fill="#1e293b">Inside</text>
+        <text x="650" y="423" text-anchor="middle" font-size="14" font-weight="600" fill="#1e293b">the house</text>
+
+        <!-- Callout for 8 ft start dot -->
+        <text x="360" y="68" text-anchor="middle" font-size="13" font-weight="700" fill="#0f172a">Overhang starts here</text>
+        <text x="360" y="84" text-anchor="middle" font-size="12" fill="#334155">(top of wall, 8 ft)</text>
+        <line x1="420" y1="88" x2="533" y2="146" stroke="#0f172a" stroke-width="1.8"/>
+        <polygon points="536,148 526,147 531,140" fill="#0f172a"/>
+        <circle cx="540" cy="150" r="5.5" fill="#0f172a"/>
+
+        <!-- Ghost Trials Layer -->
+        <g id="ghostLayer"></g>
+
+        <!-- Active Trial Drawings Layer -->
+        <g id="activeDrawLayer"></g>
+
+        <!-- Protractor & Ruler Overlay Layer -->
+        <g id="toolLayer"></g>
+
+        <!-- Axis & Footer Labels -->
+        <text x="24" y="310" transform="rotate(-90, 24, 310)" text-anchor="middle" font-size="14" font-weight="700" fill="#0f172a">Height (feet)</text>
+        <text x="72" y="562" font-size="13" font-weight="800" fill="#0f172a">&larr; SOUTH</text>
+        <text x="760" y="562" text-anchor="end" font-size="13" font-weight="800" fill="#0f172a">NORTH &rarr;</text>
+        <text x="410" y="600" text-anchor="middle" font-size="13" fill="#334155">Side view. 1 small square = 0.5 ft (2 squares = 1 ft)</text>
+      </svg>
+    </div>
+  </div>
+</div>
+
+<!-- QUESTION 3 DATA TABLE -->
+<div class="table-section">
+  <div class="card">
+    <div style="font-weight:700; color:var(--navy); font-size:1rem;">
+      Question 3 Data Table (Updates Automatically as Each Trial Completes)
+    </div>
+    <table>
+      <thead>
+        <tr>
+          <th>Overhang Length</th>
+          <th>June Line Hits Wall At (ft)</th>
+          <th>June: Window in Sun?</th>
+          <th>December Line Hits Wall At (ft)</th>
+          <th>December: Window in Sun?</th>
+          <th>Works in June?<br>(Goal: none)</th>
+          <th>Works in December?<br>(Goal: all)</th>
+        </tr>
+      </thead>
+      <tbody id="dataTableBody">
+        <tr id="row-0">
+          <td>1 ft (2 squares)</td>
+          <td id="t0-jh">&mdash;</td>
+          <td id="t0-js">&mdash;</td>
+          <td id="t0-dh">&mdash;</td>
+          <td id="t0-ds">&mdash;</td>
+          <td id="t0-jw">&mdash;</td>
+          <td id="t0-dw">&mdash;</td>
+        </tr>
+        <tr id="row-1">
+          <td>3 ft (6 squares)</td>
+          <td id="t1-jh">&mdash;</td>
+          <td id="t1-js">&mdash;</td>
+          <td id="t1-dh">&mdash;</td>
+          <td id="t1-ds">&mdash;</td>
+          <td id="t1-jw">&mdash;</td>
+          <td id="t1-dw">&mdash;</td>
+        </tr>
+        <tr id="row-2">
+          <td>2 ft (My design)</td>
+          <td id="t2-jh">&mdash;</td>
+          <td id="t2-js">&mdash;</td>
+          <td id="t2-dh">&mdash;</td>
+          <td id="t2-ds">&mdash;</td>
+          <td id="t2-jw">&mdash;</td>
+          <td id="t2-dw">&mdash;</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+(function() {
+  const WALL_X = 540;
+  const GROUND_Y = 510;
+  const PX_PER_FT = 45;
+  const SQ_PX = 22.5;
+  const TOP_Y = 60;
+  const LEFT_X = 67.5;
+
+  const trials = [
+    {
+      name: "Trial 1: 1 ft Overhang",
+      badge: "Trial 1 of 3 • Regular Pencil",
+      lengthFt: 1.0,
+      squares: 2,
+      color: "#334155",
+      juneColor: "#ea580c",
+      decColor: "#0284c7",
+      juneHitText: "5.1 ft",
+      juneSun: "some",
+      juneWorks: "N",
+      decHitText: "7.6 ft",
+      decSun: "all",
+      decWorks: "Y"
+    },
+    {
+      name: "Trial 2: 3 ft Overhang",
+      badge: "Trial 2 of 3 • Blue Colored Pencil",
+      lengthFt: 3.0,
+      squares: 6,
+      color: "#1d4ed8",
+      juneColor: "#dc2626",
+      decColor: "#0284c7",
+      juneHitText: "ground",
+      juneSun: "none",
+      juneWorks: "Y",
+      decHitText: "6.7 ft",
+      decSun: "some",
+      decWorks: "N"
+    },
+    {
+      name: "Trial 3: 2 ft Overhang (Optimal!)",
+      badge: "Trial 3 of 3 • Purple Colored Pencil",
+      lengthFt: 2.0,
+      squares: 4,
+      color: "#7c3aed",
+      juneColor: "#d97706",
+      decColor: "#16a34a",
+      juneHitText: "2.2 ft",
+      juneSun: "none",
+      juneWorks: "Y",
+      decHitText: "7.1 ft",
+      decSun: "all",
+      decWorks: "Y"
+    }
+  ];
+
+  const gridLayer = document.getElementById("gridLayer");
+  for (let i = 0; i <= 21; i++) {
+    const x = WALL_X - i * SQ_PX;
+    const isMajor = (i % 2 === 0);
+    const line = svgEl("line", {
+      x1: x, y1: TOP_Y, x2: x, y2: GROUND_Y,
+      stroke: isMajor ? "#cbd5e1" : "#e2e8f0",
+      "stroke-width": isMajor ? "1.2" : "0.8"
+    });
+    gridLayer.appendChild(line);
+  }
+  for (let j = 0; j <= 20; j++) {
+    const y = GROUND_Y - j * SQ_PX;
+    const isMajor = (j % 2 === 0);
+    const line = svgEl("line", {
+      x1: LEFT_X, y1: y, x2: WALL_X, y2: y,
+      stroke: isMajor ? "#cbd5e1" : "#e2e8f0",
+      "stroke-width": isMajor ? "1.2" : "0.8"
+    });
+    gridLayer.appendChild(line);
+
+    if (isMajor) {
+      const ft = j / 2;
+      const tick = svgEl("line", {
+        x1: LEFT_X - 5, y1: y, x2: LEFT_X, y2: y,
+        stroke: "#0f172a", "stroke-width": "1.5"
+      });
+      gridLayer.appendChild(tick);
+
+      const lbl = svgEl("text", {
+        x: LEFT_X - 10, y: y + 4,
+        "text-anchor": "end", "font-size": "12", "font-weight": "600", fill: "#0f172a"
+      });
+      lbl.textContent = ft;
+      gridLayer.appendChild(lbl);
+    }
+  }
+
+  const grassLayer = document.getElementById("grassLayer");
+  for (let gx = 80; gx < 535; gx += 22) {
+    const p = svgEl("polyline", {
+      points: `${gx},510 ${gx+5},501 ${gx+10},510`,
+      fill: "none", stroke: "#4d7c0f", "stroke-width": "1.3"
+    });
+    grassLayer.appendChild(p);
+  }
+
+  let currentTrial = 0;
+  let currentStep = 0;
+  let isPlaying = false;
+  let playTimer = null;
+  const completedTrials = new Set();
+
+  const statusText = document.getElementById("statusText");
+  const trialBadge = document.getElementById("trialBadge");
+  const activeDrawLayer = document.getElementById("activeDrawLayer");
+  const toolLayer = document.getElementById("toolLayer");
+  const ghostLayer = document.getElementById("ghostLayer");
+  const windowSunOverlay = document.getElementById("windowSunOverlay");
+  const chkGhosts = document.getElementById("chkGhosts");
+
+  function svgEl(tag, attrs) {
+    const el = document.createElementNS("http://www.w3.org/2000/svg", tag);
+    for (const [k, v] of Object.entries(attrs || {})) {
+      el.setAttribute(k, v);
+    }
+    return el;
+  }
+
+  function computeRayEndpoint(tipX, tipY, angleDeg) {
+    const rad = (angleDeg * Math.PI) / 180;
+    const dx = Math.cos(rad);
+    const dy = Math.sin(rad);
+
+    const tWall = (WALL_X - tipX) / dx;
+    const yAtWall = tipY + tWall * dy;
+
+    if (yAtWall <= GROUND_Y) {
+      const hitFt = (GROUND_Y - yAtWall) / PX_PER_FT;
+      return { x: WALL_X, y: yAtWall, hitGround: false, hitFt };
+    } else {
+      const tGround = (GROUND_Y - tipY) / dy;
+      const xAtGround = tipX + tGround * dx;
+      return { x: xAtGround, y: GROUND_Y, hitGround: true, hitFt: 0 };
+    }
+  }
+
+  function drawUpsideDownProtractor(tipX, tipY, highlightDeg) {
+    const R = 148;
+    const g = svgEl("g", { transform: `translate(${tipX}, ${tipY})` });
+
+    const body = svgEl("path", {
+      d: `M ${R},0 A ${R},${R} 0 0,1 ${-R},0 Z`,
+      fill: "rgba(224, 242, 254, 0.72)",
+      stroke: "#0284c7",
+      "stroke-width": "2"
+    });
+    g.appendChild(body);
+
+    const rIn = 86;
+    const inner = svgEl("path", {
+      d: `M ${rIn},0 A ${rIn},${rIn} 0 0,1 ${-rIn},0`,
+      fill: "none",
+      stroke: "rgba(2, 132, 199, 0.35)",
+      "stroke-width": "1"
+    });
+    g.appendChild(inner);
+
+    const flatEdge = svgEl("line", {
+      x1: -R, y1: 0, x2: R, y2: 0,
+      stroke: "#0369a1", "stroke-width": "2.5"
+    });
+    g.appendChild(flatEdge);
+
+    for (let deg = 0; deg <= 180; deg += 5) {
+      const rad = (deg * Math.PI) / 180;
+      const isMajor = (deg % 10 === 0);
+      const r1 = isMajor ? R - 13 : R - 7;
+      const x1 = r1 * Math.cos(rad);
+      const y1 = r1 * Math.sin(rad);
+      const x2 = R * Math.cos(rad);
+      const y2 = R * Math.sin(rad);
+      g.appendChild(svgEl("line", {
+        x1, y1, x2, y2,
+        stroke: "#0f172a",
+        "stroke-width": isMajor ? "1.3" : "0.8"
+      }));
+
+      if (deg % 20 === 0 && deg <= 160) {
+        const rt = R - 25;
+        const tx = rt * Math.cos(rad);
+        const ty = rt * Math.sin(rad) + 4;
+        const txt = svgEl("text", {
+          x: tx, y: ty,
+          "text-anchor": "middle", "font-size": "9.5", "font-weight": "700", fill: "#0f172a"
+        });
+        txt.textContent = deg + "°";
+        g.appendChild(txt);
+      }
+    }
+
+    if (highlightDeg !== null) {
+      const rad = (highlightDeg * Math.PI) / 180;
+      const wx = R * Math.cos(rad);
+      const wy = R * Math.sin(rad);
+      const wedge = svgEl("path", {
+        d: `M 0,0 L ${R},0 A ${R},${R} 0 0,1 ${wx},${wy} Z`,
+        fill: highlightDeg === 71 ? "rgba(234, 88, 12, 0.25)" : "rgba(2, 132, 199, 0.25)",
+        stroke: highlightDeg === 71 ? "#ea580c" : "#0284c7",
+        "stroke-width": "2"
+      });
+      g.appendChild(wedge);
+
+      const midRad = (highlightDeg * 0.5 * Math.PI) / 180;
+      const lx = 58 * Math.cos(midRad);
+      const ly = 58 * Math.sin(midRad);
+      const lbl = svgEl("text", {
+        x: lx, y: ly,
+        "text-anchor": "middle", "font-size": "12", "font-weight": "800",
+        fill: highlightDeg === 71 ? "#9a3412" : "#075985"
+      });
+      lbl.textContent = highlightDeg + "°";
+      g.appendChild(lbl);
+    }
+
+    g.appendChild(svgEl("circle", {
+      cx: 0, cy: 0, r: 7,
+      fill: "#ffffff", stroke: "#16a34a", "stroke-width": "2.5"
+    }));
+    g.appendChild(svgEl("circle", { cx: 0, cy: 0, r: 2.2, fill: "#16a34a" }));
+
+    const c0 = svgEl("text", {
+      x: R - 6, y: -7,
+      "text-anchor": "end", "font-size": "10.5", "font-weight": "800", fill: "#0369a1"
+    });
+    c0.textContent = "0° (Along overhang)";
+    g.appendChild(c0);
+
+    const cTip = svgEl("text", {
+      x: -10, y: -9,
+      "text-anchor": "end", "font-size": "10.5", "font-weight": "800", fill: "#15803d"
+    });
+    cTip.textContent = "Center hole on tip";
+    g.appendChild(cTip);
+
+    return g;
+  }
+
+  function drawRulerBetween(x1, y1, x2, y2, labelText) {
+    const dx = x2 - x1;
+    const dy = y2 - y1;
+    const len = Math.hypot(dx, dy);
+    const angle = (Math.atan2(dy, dx) * 180) / Math.PI;
+
+    const g = svgEl("g", { transform: `translate(${x1}, ${y1}) rotate(${angle})` });
+    const rect = svgEl("rect", {
+      x: -12, y: -22, width: len + 24, height: 20, rx: 3,
+      fill: "rgba(254, 243, 199, 0.92)", stroke: "#d97706", "stroke-width": "1.5"
+    });
+    g.appendChild(rect);
+
+    for (let tx = 0; tx <= len; tx += 11.25) {
+      const tall = Math.abs(tx % 22.5) < 0.1;
+      g.appendChild(svgEl("line", {
+        x1: tx, y1: -2, x2: tx, y2: tall ? -10 : -6,
+        stroke: "#92400e", "stroke-width": "1"
+      }));
+    }
+
+    if (labelText) {
+      const txt = svgEl("text", {
+        x: len / 2, y: -27,
+        "text-anchor": "middle", "font-size": "11.5", "font-weight": "800", fill: "#92400e"
+      });
+      txt.textContent = labelText;
+      g.appendChild(txt);
+    }
+    return g;
+  }
+
+  function renderGhosts() {
+    ghostLayer.innerHTML = "";
+    if (!chkGhosts.checked) return;
+
+    completedTrials.forEach(idx => {
+      if (idx === currentTrial) return;
+      const t = trials[idx];
+      const tipX = WALL_X - t.lengthFt * PX_PER_FT;
+      const tipY = 150;
+      const juneEnd = computeRayEndpoint(tipX, tipY, 71);
+      const decEnd = computeRayEndpoint(tipX, tipY, 24);
+
+      const g = svgEl("g", { opacity: "0.32" });
+      g.appendChild(svgEl("line", {
+        x1: WALL_X, y1: tipY, x2: tipX, y2: tipY,
+        stroke: t.color, "stroke-width": "4", "stroke-linecap": "round"
+      }));
+      g.appendChild(svgEl("line", {
+        x1: tipX, y1: tipY, x2: juneEnd.x, y2: juneEnd.y,
+        stroke: t.juneColor, "stroke-width": "2", "stroke-dasharray": "5,4"
+      }));
+      g.appendChild(svgEl("line", {
+        x1: tipX, y1: tipY, x2: decEnd.x, y2: decEnd.y,
+        stroke: t.decColor, "stroke-width": "2", "stroke-dasharray": "5,4"
+      }));
+      ghostLayer.appendChild(g);
+    });
+  }
+
+  function updateTableRow(idx) {
+    const t = trials[idx];
+    document.getElementById(`t${idx}-jh`).textContent = t.juneHitText;
+    document.getElementById(`t${idx}-js`).textContent = t.juneSun;
+    document.getElementById(`t${idx}-dh`).textContent = t.decHitText;
+    document.getElementById(`t${idx}-ds`).textContent = t.decSun;
+
+    document.getElementById(`t${idx}-jw`).innerHTML =
+      `<span class="${t.juneWorks === 'Y' ? 'pill-y' : 'pill-n'}">${t.juneWorks}</span>`;
+    document.getElementById(`t${idx}-dw`).innerHTML =
+      `<span class="${t.decWorks === 'Y' ? 'pill-y' : 'pill-n'}">${t.decWorks}</span>`;
+  }
+
+  function render() {
+    const t = trials[currentTrial];
+    const tipX = WALL_X - t.lengthFt * PX_PER_FT;
+    const tipY = 150;
+
+    document.querySelectorAll(".btn-trial").forEach((btn, i) => {
+      btn.classList.toggle("active", i === currentTrial);
+    });
+    for (let i = 0; i < 3; i++) {
+      document.getElementById(`row-${i}`).classList.toggle("row-active", i === currentTrial);
+    }
+
+    for (let s = 0; s < 5; s++) {
+      document.getElementById(`stepCard${s}`).classList.toggle("active", s === currentStep);
+    }
+
+    trialBadge.textContent = t.badge;
+    activeDrawLayer.innerHTML = "";
+    toolLayer.innerHTML = "";
+    windowSunOverlay.innerHTML = "";
+    renderGhosts();
+
+    const overhangLine = svgEl("line", {
+      x1: WALL_X, y1: tipY, x2: tipX, y2: tipY,
+      stroke: t.color, "stroke-width": "5", "stroke-linecap": "round"
+    });
+    activeDrawLayer.appendChild(overhangLine);
+
+    const tipDot = svgEl("circle", {
+      cx: tipX, cy: tipY, r: "5",
+      fill: t.color, stroke: "#ffffff", "stroke-width": "1.5"
+    });
+    activeDrawLayer.appendChild(tipDot);
+
+    const ohLabel = svgEl("text", {
+      x: (WALL_X + tipX) / 2, y: tipY - 10,
+      "text-anchor": "middle", "font-size": "12", "font-weight": "800", fill: t.color
+    });
+    ohLabel.textContent = `${t.lengthFt} ft (${t.squares} sq)`;
+    activeDrawLayer.appendChild(ohLabel);
+
+    const R_DOT = 135;
+    const rad71 = (71 * Math.PI) / 180;
+    const dot71X = tipX + R_DOT * Math.cos(rad71);
+    const dot71Y = tipY + R_DOT * Math.sin(rad71);
+
+    const rad24 = (24 * Math.PI) / 180;
+    const dot24X = tipX + R_DOT * Math.cos(rad24);
+    const dot24Y = tipY + R_DOT * Math.sin(rad24);
+
+    if (currentStep === 0) {
+      statusText.textContent = `${t.name} — Step 1: Draw ${t.lengthFt} ft (${t.squares} squares) left from 8 ft`;
+      toolLayer.appendChild(drawRulerBetween(tipX, tipY, WALL_X, tipY, `Measure ${t.squares} squares = ${t.lengthFt} ft`));
+    }
+    else if (currentStep === 1) {
+      statusText.textContent = `${t.name} — Step 2: Center upside-down protractor hole on overhang tip (0° right)`;
+      toolLayer.appendChild(drawUpsideDownProtractor(tipX, tipY, null));
+    }
+    else if (currentStep === 2) {
+      statusText.textContent = `${t.name} — Step 3: Count 71° downward from 0° right edge and mark June dot`;
+      toolLayer.appendChild(drawUpsideDownProtractor(tipX, tipY, 71));
+
+      activeDrawLayer.appendChild(svgEl("circle", {
+        cx: dot71X, cy: dot71Y, r: "5.5", fill: t.juneColor, stroke: "#fff", "stroke-width": "1.5"
+      }));
+      const lbl71 = svgEl("text", {
+        x: dot71X - 10, y: dot71Y + 15,
+        "text-anchor": "end", "font-size": "11.5", "font-weight": "800", fill: t.juneColor
+      });
+      lbl71.textContent = "71° dot (June)";
+      activeDrawLayer.appendChild(lbl71);
+    }
+    else if (currentStep === 3) {
+      statusText.textContent = `${t.name} — Step 4: Count 24° downward from 0° right edge and mark Dec dot`;
+      toolLayer.appendChild(drawUpsideDownProtractor(tipX, tipY, 24));
+
+      activeDrawLayer.appendChild(svgEl("circle", {
+        cx: dot71X, cy: dot71Y, r: "5", fill: t.juneColor, stroke: "#fff", "stroke-width": "1.5"
+      }));
+      activeDrawLayer.appendChild(svgEl("circle", {
+        cx: dot24X, cy: dot24Y, r: "5.5", fill: t.decColor, stroke: "#fff", "stroke-width": "1.5"
+      }));
+      const lbl24 = svgEl("text", {
+        x: dot24X + 10, y: dot24Y + 4,
+        "text-anchor": "start", "font-size": "11.5", "font-weight": "800", fill: t.decColor
+      });
+      lbl24.textContent = "24° dot (Dec)";
+      activeDrawLayer.appendChild(lbl24);
+    }
+    else if (currentStep === 4) {
+      const juneEnd = computeRayEndpoint(tipX, tipY, 71);
+      const decEnd = computeRayEndpoint(tipX, tipY, 24);
+
+      statusText.textContent = `${t.name} — Step 5: June hits ${t.juneHitText} (${t.juneSun} sun) | Dec hits ${t.decHitText} (${t.decSun} sun)`;
+
+      activeDrawLayer.appendChild(svgEl("circle", { cx: dot71X, cy: dot71Y, r: "4.5", fill: t.juneColor }));
+      activeDrawLayer.appendChild(svgEl("circle", { cx: dot24X, cy: dot24Y, r: "4.5", fill: t.decColor }));
+
+      activeDrawLayer.appendChild(svgEl("line", {
+        x1: tipX, y1: tipY, x2: juneEnd.x, y2: juneEnd.y,
+        stroke: t.juneColor, "stroke-width": "3"
+      }));
+      activeDrawLayer.appendChild(svgEl("circle", {
+        cx: juneEnd.x, cy: juneEnd.y, r: "5", fill: t.juneColor
+      }));
+      const jLbl = svgEl("text", {
+        x: juneEnd.hitGround ? juneEnd.x - 8 : juneEnd.x - 10,
+        y: juneEnd.hitGround ? juneEnd.y - 10 : juneEnd.y + 4,
+        "text-anchor": "end", "font-size": "12", "font-weight": "800", fill: t.juneColor
+      });
+      jLbl.textContent = `June (${t.juneHitText})`;
+      activeDrawLayer.appendChild(jLbl);
+
+      activeDrawLayer.appendChild(svgEl("line", {
+        x1: tipX, y1: tipY, x2: decEnd.x, y2: decEnd.y,
+        stroke: t.decColor, "stroke-width": "3"
+      }));
+      activeDrawLayer.appendChild(svgEl("circle", {
+        cx: decEnd.x, cy: decEnd.y, r: "5", fill: t.decColor
+      }));
+      const dLbl = svgEl("text", {
+        x: decEnd.x - 10, y: decEnd.y - 7,
+        "text-anchor": "end", "font-size": "12", "font-weight": "800", fill: t.decColor
+      });
+      dLbl.textContent = `Dec (${t.decHitText})`;
+      activeDrawLayer.appendChild(dLbl);
+
+      const sunTopY = Math.max(195, Math.min(375, decEnd.y));
+      if (sunTopY < 375) {
+        windowSunOverlay.appendChild(svgEl("rect", {
+          x: 535.5, y: sunTopY, width: 9, height: 375 - sunTopY,
+          fill: "rgba(250, 204, 21, 0.75)"
+        }));
+      }
+
+      completedTrials.add(currentTrial);
+      updateTableRow(currentTrial);
+    }
+  }
+
+  function stopAutoPlay() {
+    isPlaying = false;
+    if (playTimer) {
+      clearTimeout(playTimer);
+      playTimer = null;
+    }
+    document.getElementById("btnPlay").textContent = "▶ Play Full Demo";
+  }
+
+  function advanceDemo() {
+    if (currentStep < 4) {
+      currentStep++;
+      render();
+      return true;
+    } else if (currentTrial < 2) {
+      currentTrial++;
+      currentStep = 0;
+      render();
+      return true;
+    } else {
+      stopAutoPlay();
+      statusText.textContent = "All 3 trials complete! Notice why a 2 ft overhang works in both June and December.";
+      return false;
+    }
+  }
+
+  function runAutoPlayLoop() {
+    if (!isPlaying) return;
+    const delay = (currentStep === 4) ? 2600 : 1850;
+    playTimer = setTimeout(() => {
+      if (!isPlaying) return;
+      if (advanceDemo()) {
+        runAutoPlayLoop();
+      }
+    }, delay);
+  }
+
+  document.getElementById("btnPlay").addEventListener("click", () => {
+    if (isPlaying) {
+      stopAutoPlay();
+      return;
+    }
+    if (currentTrial === 2 && currentStep === 4) {
+      currentTrial = 0;
+      currentStep = 0;
+      render();
+    }
+    isPlaying = true;
+    document.getElementById("btnPlay").textContent = "⏸ Pause Demo";
+    runAutoPlayLoop();
+  });
+
+  document.getElementById("btnNext").addEventListener("click", () => {
+    stopAutoPlay();
+    advanceDemo();
+  });
+
+  document.querySelectorAll(".btn-trial").forEach((btn, idx) => {
+    btn.addEventListener("click", () => {
+      stopAutoPlay();
+      currentTrial = idx;
+      currentStep = 0;
+      render();
+    });
+  });
+
+  document.getElementById("btnReset").addEventListener("click", () => {
+    stopAutoPlay();
+    completedTrials.clear();
+    currentTrial = 0;
+    currentStep = 0;
+    for (let i = 0; i < 3; i++) {
+      ["jh", "js", "dh", "ds", "jw", "dw"].forEach(col => {
+        document.getElementById(`t${i}-${col}`).textContent = "—";
+      });
+    }
+    render();
+  });
+
+  chkGhosts.addEventListener("change", render);
+
+  render();
+  isPlaying = true;
+  document.getElementById("btnPlay").textContent = "⏸ Pause Demo";
+  runAutoPlayLoop();
+})();
+</script>
+</body>
+</html>
